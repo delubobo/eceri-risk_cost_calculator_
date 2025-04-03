@@ -1,0 +1,1073 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ECERI Risk Calculator</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --construction-blue: #003DA5;
+            --construction-orange: #FF8200;
+            --warning-yellow: #FFCC00;
+            --text-gray: #333333;
+            --light-blue: #C4D8E2;
+        }
+        
+        body {
+            font-family: 'Helvetica', 'Arial', sans-serif;
+            color: var(--text-gray);
+            background-color: #f5f8fa;
+            background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0h50v50H0z' fill='%23f5f8fa'/%3E%3Cpath d='M50 0h50v50H50z' fill='%23edf2f7'/%3E%3Cpath d='M0 50h50v50H0z' fill='%23edf2f7'/%3E%3Cpath d='M50 50h50v50H50z' fill='%23f5f8fa'/%3E%3C/svg%3E");
+            background-attachment: fixed;
+        }
+        
+        .header {
+            background-color: var(--construction-blue);
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .header::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: url("data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0h10v10H0z' fill='rgba(255,255,255,0.05)'/%3E%3Cpath d='M10 0h10v10H10z' fill='transparent'/%3E%3Cpath d='M0 10h10v10H0z' fill='transparent'/%3E%3Cpath d='M10 10h10v10H10z' fill='rgba(255,255,255,0.05)'/%3E%3C/svg%3E");
+            opacity: 0.5;
+        }
+        
+        .btn-primary {
+            background-color: var(--construction-orange);
+            color: white;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary:hover {
+            background-color: #e67300;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .input-container {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .input-container::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 6px;
+            background: linear-gradient(to right, var(--construction-blue), var(--construction-orange));
+        }
+        
+        .result-container {
+            background-color: var(--light-blue);
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .risk-card {
+            transition: all 0.3s ease;
+            transform-origin: center;
+        }
+        
+        .risk-card:hover {
+            transform: scale(1.02);
+        }
+        
+        .risk-negligible { background-color: #2ca02c; color: white; }
+        .risk-low { background-color: #98df8a; color: var(--text-gray); }
+        .risk-medium { background-color: #ffbb78; color: var(--text-gray); }
+        .risk-high { background-color: #ff7f0e; color: white; }
+        .risk-very-high { background-color: #d62728; color: white; }
+        
+        .gauge-container {
+            position: relative;
+            width: 100%;
+            height: 20px;
+            background-color: #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.2);
+        }
+        
+        .gauge-fill {
+            height: 100%;
+            border-radius: 10px;
+            transition: width 0.8s ease-out;
+            background: linear-gradient(to right, #FFC107, #FF9800, #FF5722);
+        }
+        
+        .threshold-gauge {
+            position: relative;
+            width: 100%;
+            height: 8px;
+            background-color: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 5px 0;
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+        }
+        
+        .threshold-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.5s ease-out;
+        }
+        
+        .factor-contribution {
+            height: 12px;
+            margin: 2px 0;
+            border-radius: 6px;
+            transition: width 0.5s ease-out;
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+        }
+        
+        .height-factor { background: linear-gradient(to right, #4285F4, #5C9AFF); }
+        .surface-factor { background: linear-gradient(to right, #FBBC05, #FDD663); }
+        .slope-factor { background: linear-gradient(to right, #34A853, #66C384); }
+        .edge-factor { background: linear-gradient(to right, #EA4335, #F3786A); }
+        
+        .comparison-toggle button.active {
+            background-color: var(--construction-blue);
+            color: white;
+        }
+        
+        .factor-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .preset-btn {
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .preset-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .preset-btn::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+        }
+        
+        .preset-roofing::before { background-color: #EA4335; }
+        .preset-steel::before { background-color: #4285F4; }
+        .preset-scaffolding::before { background-color: #FBBC05; }
+        .preset-aerial::before { background-color: #34A853; }
+        
+        /* Construction Imagery */
+        .warning-stripes {
+            background-image: repeating-linear-gradient(
+                45deg,
+                var(--warning-yellow),
+                var(--warning-yellow) 10px,
+                #000 10px,
+                #000 20px
+            );
+            height: 15px;
+        }
+        
+        .specific-recommendations {
+            list-style: none;
+            padding-left: 0;
+        }
+        
+        .specific-recommendations li {
+            position: relative;
+            padding-left: 28px;
+            margin-bottom: 6px;
+            font-size: 0.875rem;
+        }
+        
+        .specific-recommendations li::before {
+            content: "!";
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 20px;
+            height: 20px;
+            background-color: var(--construction-orange);
+            color: white;
+            border-radius: 50%;
+            font-weight: bold;
+        }
+        
+        @media (max-width: 768px) {
+            .grid-cols-2 {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 1.5rem;
+            }
+            
+            .header p {
+                font-size: 1rem;
+            }
+            
+            .input-container, .result-container {
+                padding: 1rem;
+            }
+            
+            .btn-primary {
+                padding: 0.5rem 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header py-4 px-4 mb-6">
+        <div class="container mx-auto text-center relative z-10">
+            <h1 class="text-3xl font-bold">ECERI Risk Calculator</h1>
+            <p class="text-xl">Elevated Construction Ergonomic Risk Index</p>
+            <div class="warning-stripes w-32 mx-auto mt-3"></div>
+        </div>
+    </div>
+
+    <div class="container mx-auto px-4 pb-8 max-w-6xl">
+        <!-- View Toggle -->
+        <div class="comparison-toggle mb-6 text-center">
+            <p class="mb-2 font-semibold">Comparison Mode:</p>
+            <div class="inline-flex rounded-md shadow-sm">
+                <button id="viewReba" class="px-4 py-2 text-sm font-medium border border-gray-300 rounded-l-lg hover:bg-gray-100">
+                    REBA Only
+                </button>
+                <button id="viewBoth" class="active px-4 py-2 text-sm font-medium border-t border-b border-gray-300 hover:bg-gray-100">
+                    Compare Both
+                </button>
+                <button id="viewEceri" class="px-4 py-2 text-sm font-medium border border-gray-300 rounded-r-lg hover:bg-gray-100">
+                    ECERI Only
+                </button>
+            </div>
+        </div>
+
+        <div class="grid md:grid-cols-2 gap-8">
+            <!-- Input Section -->
+            <div class="input-container p-6">
+                <h2 class="text-2xl font-bold mb-4 text-center">Input Parameters</h2>
+                
+                <!-- Domain Presets -->
+                <div class="mb-6">
+                    <label class="block mb-2 font-semibold">Domain Presets:</label>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+                        <button id="presetRoofing" class="preset-btn preset-roofing px-3 py-2 text-sm font-medium bg-white border border-gray-300 rounded hover:bg-gray-50">
+                            <span class="flex items-center">
+                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                                </svg>
+                                Roofing
+                            </span>
+                        </button>
+                        <button id="presetSteel" class="preset-btn preset-steel px-3 py-2 text-sm font-medium bg-white border border-gray-300 rounded hover:bg-gray-50">
+                            <span class="flex items-center">
+                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                                </svg>
+                                Steel Work
+                            </span>
+                        </button>
+                        <button id="presetScaffolding" class="preset-btn preset-scaffolding px-3 py-2 text-sm font-medium bg-white border border-gray-300 rounded hover:bg-gray-50">
+                            <span class="flex items-center">
+                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"></path>
+                                </svg>
+                                Scaffolding
+                            </span>
+                        </button>
+                        <button id="presetAerial" class="preset-btn preset-aerial px-3 py-2 text-sm font-medium bg-white border border-gray-300 rounded hover:bg-gray-50">
+                            <span class="flex items-center">
+                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                                </svg>
+                                Aerial Lift
+                            </span>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block mb-2 font-semibold" for="reba">REBA Score (1-15):</label>
+                    <input type="range" id="reba" name="reba" min="1" max="15" value="7" class="w-full">
+                    <div class="flex justify-between">
+                        <span>1</span>
+                        <span id="rebaValue">7</span>
+                        <span>15</span>
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block mb-2 font-semibold">
+                        <span class="factor-icon bg-blue-100 text-blue-700">H</span>
+                        Height (meters):
+                    </label>
+                    <input type="range" id="height" name="height" min="0" max="30" value="10" step="0.5" class="w-full">
+                    <div class="flex justify-between">
+                        <span>0m</span>
+                        <span id="heightValue">10m</span>
+                        <span>30m</span>
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block mb-2 font-semibold">
+                        <span class="factor-icon bg-yellow-100 text-yellow-700">S</span>
+                        Surface Condition (0-3):
+                    </label>
+                    <div class="grid grid-cols-4 gap-2 mt-2">
+                        <div class="text-center">
+                            <input type="radio" id="surface0" name="surface" value="0" checked>
+                            <label for="surface0" class="block mt-1">0<br><span class="text-xs">Optimal</span></label>
+                        </div>
+                        <div class="text-center">
+                            <input type="radio" id="surface1" name="surface" value="1">
+                            <label for="surface1" class="block mt-1">1<br><span class="text-xs">Moderate</span></label>
+                        </div>
+                        <div class="text-center">
+                            <input type="radio" id="surface2" name="surface" value="2">
+                            <label for="surface2" class="block mt-1">2<br><span class="text-xs">Challenging</span></label>
+                        </div>
+                        <div class="text-center">
+                            <input type="radio" id="surface3" name="surface" value="3">
+                            <label for="surface3" class="block mt-1">3<br><span class="text-xs">Hazardous</span></label>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block mb-2 font-semibold">
+                        <span class="factor-icon bg-green-100 text-green-700">A</span>
+                        Slope Angle (degrees):
+                    </label>
+                    <input type="range" id="slope" name="slope" min="0" max="45" value="15" class="w-full">
+                    <div class="flex justify-between">
+                        <span>0°</span>
+                        <span id="slopeValue">15°</span>
+                        <span>45°</span>
+                    </div>
+                </div>
+                
+                <div class="mb-6">
+                    <label class="block mb-2 font-semibold">
+                        <span class="factor-icon bg-red-100 text-red-700">E</span>
+                        Edge Distance (meters):
+                    </label>
+                    <input type="range" id="edgeDist" name="edgeDist" min="0.1" max="3" value="1.5" step="0.1" class="w-full">
+                    <div class="flex justify-between">
+                        <span>0.1m</span>
+                        <span id="edgeDistValue">1.5m</span>
+                        <span>3m</span>
+                    </div>
+                </div>
+                
+                <button id="calculate" class="btn-primary font-bold py-3 px-4 rounded w-full flex justify-center items-center">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                    </svg>
+                    Calculate ECERI
+                </button>
+            </div>
+            
+            <!-- Results Section -->
+            <div class="result-container p-6">
+                <h2 class="text-2xl font-bold mb-4 text-center">Results</h2>
+                
+                <div id="comparisonContainer" class="grid grid-cols-2 gap-4 mb-6">
+                    <div id="rebaCard" class="risk-card bg-white p-4 rounded shadow text-center">
+                        <h3 class="text-lg font-semibold">REBA Score</h3>
+                        <p id="rebaScore" class="text-4xl font-bold mt-2">-</p>
+                        <p id="rebaCategory" class="text-lg mt-1 rounded py-1">-</p>
+                        <div class="mt-2 pt-2 border-t">
+                            <h4 class="text-sm font-bold">Required Response:</h4>
+                            <p id="rebaAction" class="text-sm italic">-</p>
+                        </div>
+                        
+                        <!-- Risk Threshold Indicator -->
+                        <div class="mt-3 pt-2 border-t">
+                            <div class="flex justify-between text-xs">
+                                <span>Category Threshold:</span>
+                                <span id="rebaNextCategory"></span>
+                            </div>
+                            <div class="threshold-gauge mt-1">
+                                <div id="rebaThresholdFill" class="threshold-fill bg-blue-500" style="width: 0%"></div>
+                            </div>
+                            <p id="rebaThresholdInfo" class="text-xs text-gray-500 mt-1"></p>
+                        </div>
+                        
+                        <!-- Specific Safety Recommendations -->
+                        <div class="mt-3 pt-2 border-t text-left">
+                            <h4 class="text-sm font-bold mb-2">Safety Recommendations:</h4>
+                            <ul id="rebaRecommendations" class="specific-recommendations">
+                                <li>Calculating recommendations...</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div id="eceriCard" class="risk-card bg-white p-4 rounded shadow text-center">
+                        <h3 class="text-lg font-semibold">ECERI Score</h3>
+                        <p id="eceriScore" class="text-4xl font-bold mt-2">-</p>
+                        <p id="eceriCategory" class="text-lg mt-1 rounded py-1">-</p>
+                        <div class="mt-2 pt-2 border-t">
+                            <h4 class="text-sm font-bold">Required Response:</h4>
+                            <p id="eceriAction" class="text-sm italic">-</p>
+                        </div>
+                        
+                        <!-- Risk Threshold Indicator -->
+                        <div class="mt-3 pt-2 border-t">
+                            <div class="flex justify-between text-xs">
+                                <span>Category Threshold:</span>
+                                <span id="eceriNextCategory"></span>
+                            </div>
+                            <div class="threshold-gauge mt-1">
+                                <div id="eceriThresholdFill" class="threshold-fill bg-red-500" style="width: 0%"></div>
+                            </div>
+                            <p id="eceriThresholdInfo" class="text-xs text-gray-500 mt-1"></p>
+                        </div>
+                        
+                        <!-- Specific Safety Recommendations -->
+                        <div class="mt-3 pt-2 border-t text-left">
+                            <h4 class="text-sm font-bold mb-2">Safety Recommendations:</h4>
+                            <ul id="eceriRecommendations" class="specific-recommendations">
+                                <li>Calculating recommendations...</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <h3 class="text-lg font-semibold mb-2">Amplification Factor</h3>
+                    <div class="gauge-container">
+                        <div id="amplificationGauge" class="gauge-fill" style="width: 0%;"></div>
+                    </div>
+                    <p id="amplificationValue" class="text-center">0%</p>
+                </div>
+                
+                <div class="mb-4">
+                    <h3 class="text-lg font-semibold mb-2">Factor Contributions</h3>
+                    <div class="bg-white p-3 rounded shadow">
+                        <div class="mb-2">
+                            <div class="flex justify-between mb-1">
+                                <span class="flex items-center">
+                                    <span class="factor-icon bg-blue-100 text-blue-700">H</span>
+                                    Height Factor
+                                </span>
+                                <span id="heightContrib">0%</span>
+                            </div>
+                            <div id="heightBar" class="factor-contribution height-factor" style="width: 0%"></div>
+                        </div>
+                        <div class="mb-2">
+                            <div class="flex justify-between mb-1">
+                                <span class="flex items-center">
+                                    <span class="factor-icon bg-yellow-100 text-yellow-700">S</span>
+                                    Surface Factor
+                                </span>
+                                <span id="surfaceContrib">0%</span>
+                            </div>
+                            <div id="surfaceBar" class="factor-contribution surface-factor" style="width: 0%"></div>
+                        </div>
+                        <div class="mb-2">
+                            <div class="flex justify-between mb-1">
+                                <span class="flex items-center">
+                                    <span class="factor-icon bg-green-100 text-green-700">A</span>
+                                    Slope Factor
+                                </span>
+                                <span id="slopeContrib">0%</span>
+                            </div>
+                            <div id="slopeBar" class="factor-contribution slope-factor" style="width: 0%"></div>
+                        </div>
+                        <div class="mb-2">
+                            <div class="flex justify-between mb-1">
+                                <span class="flex items-center">
+                                    <span class="factor-icon bg-red-100 text-red-700">E</span>
+                                    Edge Proximity
+                                </span>
+                                <span id="edgeContrib">0%</span>
+                            </div>
+                            <div id="edgeBar" class="factor-contribution edge-factor" style="width: 0%"></div>
+                        </div>
+                        <div class="mt-4 pt-2 border-t text-center text-sm">
+                            <p>Plus interaction effects between factors</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Cost-Benefit Estimator -->
+                <div class="mb-5">
+                    <h3 class="text-lg font-semibold mb-2">Financial Impact Analysis</h3>
+                    <div class="bg-white p-4 rounded shadow">
+                        <div class="flex items-center justify-between mb-3">
+                            <div>
+                                <h4 class="font-bold">Potential Cost Savings</h4>
+                                <p class="text-sm text-gray-600">Based on industry average injury costs</p>
+                            </div>
+                            <div class="flex items-center space-x-3">
+                                <div>
+                                    <label for="workersInput" class="block text-xs text-gray-500">Workers:</label>
+                                    <input type="number" id="workersInput" class="border rounded w-16 px-2 py-1 text-sm" value="5" min="1" max="100">
+                                </div>
+                                <div>
+                                    <label for="durationInput" class="block text-xs text-gray-500">Project (months):</label>
+                                    <input type="number" id="durationInput" class="border rounded w-16 px-2 py-1 text-sm" value="6" min="1" max="36">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-4 mb-4">
+                            <div class="bg-gray-100 p-3 rounded">
+                                <h5 class="text-sm font-semibold text-red-600 mb-1">Without ECERI Assessment</h5>
+                                <p class="text-3xl font-bold" id="costWithoutEceri">$0</p>
+                                <p class="text-xs text-gray-500">Potential injury costs based on REBA alone</p>
+                                <div class="mt-2 text-sm">
+                                    <div class="flex justify-between">
+                                        <span>Risk Category:</span>
+                                        <span id="rebaRiskCategory">-</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span>Estimated Incident Rate:</span>
+                                        <span id="rebaIncidentRate">-</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="bg-blue-50 p-3 rounded">
+                                <h5 class="text-sm font-semibold text-green-600 mb-1">With ECERI Assessment</h5>
+                                <p class="text-3xl font-bold" id="costWithEceri">$0</p>
+                                <p class="text-xs text-gray-500">Potential injury costs with proper intervention</p>
+                                <div class="mt-2 text-sm">
+                                    <div class="flex justify-between">
+                                        <span>Risk Category:</span>
+                                        <span id="eceriRiskCategory">-</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span>Estimated Incident Rate:</span>
+                                        <span id="eceriIncidentRate">-</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-gray-50 p-3 rounded">
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <h5 class="font-semibold text-blue-600">Potential Cost Savings</h5>
+                                    <p class="text-xs text-gray-500">By implementing ECERI-based interventions</p>
+                                </div>
+                                <p class="text-2xl font-bold text-green-600" id="costSavings">$0</p>
+                            </div>
+                            <div class="mt-3">
+                                <div class="text-xs text-gray-600 mb-1 flex justify-between">
+                                    <span>Return on Safety Investment</span>
+                                    <span id="roiValue">0%</span>
+                                </div>
+                                <div class="gauge-container h-4">
+                                    <div id="roiGauge" class="gauge-fill" style="width: 0%; background: linear-gradient(to right, #4CAF50, #8BC34A);"></div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="text-xs text-gray-500 mt-3">
+                            <p><strong>Note:</strong> Estimates based on industry average direct cost per recordable injury ($39,000) and indirect cost multiplier (2-4x). Actual costs may vary.</p>
+                            <p class="mt-1">Source: Liberty Mutual Workplace Safety Index, OSHA Safety Pays Calculator</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="warning-stripes mb-3"></div>
+                
+                <div class="text-center mt-2">
+                    <p class="text-sm italic">ECERI enhances traditional REBA assessments by incorporating height-specific contextual factors.</p>
+                    <p class="text-sm mt-2">© UTSA Construction Safety Research</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // View toggle
+            const viewReba = document.getElementById('viewReba');
+            const viewBoth = document.getElementById('viewBoth');
+            const viewEceri = document.getElementById('viewEceri');
+            const rebaCard = document.getElementById('rebaCard');
+            const eceriCard = document.getElementById('eceriCard');
+            const comparisonContainer = document.getElementById('comparisonContainer');
+            
+            viewReba.addEventListener('click', function() {
+                setActiveView(this);
+                comparisonContainer.className = 'grid grid-cols-1 gap-4 mb-6';
+                rebaCard.style.display = 'block';
+                eceriCard.style.display = 'none';
+            });
+            
+            viewBoth.addEventListener('click', function() {
+                setActiveView(this);
+                comparisonContainer.className = 'grid grid-cols-2 gap-4 mb-6';
+                rebaCard.style.display = 'block';
+                eceriCard.style.display = 'block';
+            });
+            
+            viewEceri.addEventListener('click', function() {
+                setActiveView(this);
+                comparisonContainer.className = 'grid grid-cols-1 gap-4 mb-6';
+                rebaCard.style.display = 'none';
+                eceriCard.style.display = 'block';
+            });
+            
+            function setActiveView(button) {
+                // Remove active class from all buttons
+                viewReba.classList.remove('active');
+                viewBoth.classList.remove('active');
+                viewEceri.classList.remove('active');
+                
+                // Add active class to clicked button
+                button.classList.add('active');
+            }
+            
+            // Domain presets
+            document.getElementById('presetRoofing').addEventListener('click', function() {
+                document.getElementById('height').value = 8;
+                document.getElementById('heightValue').textContent = '8m';
+                document.getElementById('surface2').checked = true;
+                document.getElementById('slope').value = 30;
+                document.getElementById('slopeValue').textContent = '30°';
+                document.getElementById('edgeDist').value = 1.0;
+                document.getElementById('edgeDistValue').textContent = '1.0m';
+                calculateECERI();
+            });
+            
+            document.getElementById('presetSteel').addEventListener('click', function() {
+                document.getElementById('height').value = 25;
+                document.getElementById('heightValue').textContent = '25m';
+                document.getElementById('surface1').checked = true;
+                document.getElementById('slope').value = 5;
+                document.getElementById('slopeValue').textContent = '5°';
+                document.getElementById('edgeDist').value = 1.5;
+                document.getElementById('edgeDistValue').textContent = '1.5m';
+                calculateECERI();
+            });
+            
+            document.getElementById('presetScaffolding').addEventListener('click', function() {
+                document.getElementById('height').value = 12;
+                document.getElementById('heightValue').textContent = '12m';
+                document.getElementById('surface2').checked = true;
+                document.getElementById('slope').value = 0;
+                document.getElementById('slopeValue').textContent = '0°';
+                document.getElementById('edgeDist').value = 0.8;
+                document.getElementById('edgeDistValue').textContent = '0.8m';
+                calculateECERI();
+            });
+            
+            document.getElementById('presetAerial').addEventListener('click', function() {
+                document.getElementById('height').value = 15;
+                document.getElementById('heightValue').textContent = '15m';
+                document.getElementById('surface0').checked = true;
+                document.getElementById('slope').value = 0;
+                document.getElementById('slopeValue').textContent = '0°';
+                document.getElementById('edgeDist').value = 0.5;
+                document.getElementById('edgeDistValue').textContent = '0.5m';
+                calculateECERI();
+            });
+            
+            // Update displayed values when sliders change
+            document.getElementById('reba').addEventListener('input', function() {
+                document.getElementById('rebaValue').textContent = this.value;
+            });
+            
+            document.getElementById('height').addEventListener('input', function() {
+                document.getElementById('heightValue').textContent = this.value + 'm';
+            });
+            
+            document.getElementById('slope').addEventListener('input', function() {
+                document.getElementById('slopeValue').textContent = this.value + '°';
+            });
+            
+            document.getElementById('edgeDist').addEventListener('input', function() {
+                document.getElementById('edgeDistValue').textContent = this.value + 'm';
+            });
+            
+            // Calculate ECERI when button is clicked
+            document.getElementById('calculate').addEventListener('click', calculateECERI);
+            
+            // Initial calculation
+            calculateECERI();
+            
+            function calculateECERI() {
+                // Get input values
+                const reba = parseFloat(document.getElementById('reba').value);
+                const height = parseFloat(document.getElementById('height').value);
+                const surface = parseFloat(document.querySelector('input[name="surface"]:checked').value);
+                const slope = parseFloat(document.getElementById('slope').value);
+                const edgeDist = parseFloat(document.getElementById('edgeDist').value);
+                
+                // Constants from ECERI model
+                const h_max = 30;  // Maximum reference height in meters
+                const s_max = 3;   // Maximum surface rating
+                const theta_max = 45;  // Maximum reference angle in degrees
+                const d_max = 3;   // Maximum reference distance in meters
+                
+                const alpha = 0.8;  // Height scaling parameter
+                const beta = 1.2;   // Slope scaling parameter
+                const gamma = 0.7;  // Edge distance scaling parameter
+                
+                // Calculate normalized factors
+                const hf = Math.min(1, Math.pow(height/h_max, alpha));
+                const sf = surface/s_max;
+                const slf = Math.min(1, Math.pow(slope/theta_max, beta));
+                const epf = Math.max(0, 1 - Math.pow(edgeDist/d_max, gamma));
+                
+                // Define weights
+                const w1 = 0.30;  // Height Factor weight
+                const w2 = 0.20;  // Surface Factor weight
+                const w3 = 0.30;  // Slope Factor weight
+                const w4 = 0.20;  // Edge Proximity Factor weight
+                
+                // Interaction weights
+                const w12 = 0.05;  // HF x SF interaction
+                const w13 = 0.10;  // HF x SLF interaction
+                const w24 = 0.05;  // SF x EPF interaction
+                
+                // Calculate amplification factor with normalization
+                const amplification = (w1*hf + w2*sf + w3*slf + w4*epf + 
+                                     w12*hf*sf + w13*hf*slf + w24*sf*epf) / 3.0;
+                
+                // Calculate ECERI
+                const eceri = reba * (1 + amplification);
+                
+                // Calculate component contributions
+                const components = {
+                    HF_contrib: w1*hf / 3.0,
+                    SF_contrib: w2*sf / 3.0,
+                    SLF_contrib: w3*slf / 3.0,
+                    EPF_contrib: w4*epf / 3.0,
+                    HF_SF_contrib: w12*hf*sf / 3.0,
+                    HF_SLF_contrib: w13*hf*slf / 3.0,
+                    SF_EPF_contrib: w24*sf*epf / 3.0
+                };
+                
+                // Calculate normalized factors for recommendations
+                const factors = { hf, sf, slf, epf };
+                
+                // Display results
+                document.getElementById('rebaScore').textContent = reba.toFixed(1);
+                document.getElementById('eceriScore').textContent = eceri.toFixed(1);
+                
+                // Determine risk categories
+                const rebaCategory = getRiskCategory(reba);
+                const eceriCategory = getRiskCategory(eceri);
+                
+                // Get action recommendations
+                const rebaAction = getActionRecommendation(rebaCategory);
+                const eceriAction = getActionRecommendation(eceriCategory);
+                
+                // Display categories and actions
+                document.getElementById('rebaCategory').textContent = rebaCategory;
+                document.getElementById('eceriCategory').textContent = eceriCategory;
+                document.getElementById('rebaAction').textContent = rebaAction;
+                document.getElementById('eceriAction').textContent = eceriAction;
+                
+                // Set category colors
+                setRiskCategoryColor('rebaCategory', rebaCategory);
+                setRiskCategoryColor('eceriCategory', eceriCategory);
+                
+                // Update amplification gauge
+                const amplificationPercent = amplification * 100;
+                document.getElementById('amplificationGauge').style.width = Math.min(amplificationPercent * 2.5, 100) + '%';
+                document.getElementById('amplificationValue').textContent = amplificationPercent.toFixed(1) + '%';
+                
+                // Update factor contributions
+                document.getElementById('heightContrib').textContent = (components.HF_contrib * 100).toFixed(1) + '%';
+                document.getElementById('surfaceContrib').textContent = (components.SF_contrib * 100).toFixed(1) + '%';
+                document.getElementById('slopeContrib').textContent = (components.SLF_contrib * 100).toFixed(1) + '%';
+                document.getElementById('edgeContrib').textContent = (components.EPF_contrib * 100).toFixed(1) + '%';
+                
+                document.getElementById('heightBar').style.width = (components.HF_contrib * 300) + '%';
+                document.getElementById('surfaceBar').style.width = (components.SF_contrib * 300) + '%';
+                document.getElementById('slopeBar').style.width = (components.SLF_contrib * 300) + '%';
+                document.getElementById('edgeBar').style.width = (components.EPF_contrib * 300) + '%';
+                
+                // Update threshold indicators
+                updateThresholdIndicator('reba', reba);
+                updateThresholdIndicator('eceri', eceri);
+                
+                // Update safety recommendations
+                updateSafetyRecommendations('reba', rebaCategory, factors);
+                updateSafetyRecommendations('eceri', eceriCategory, factors);
+                
+                // Update financial impact analysis
+                updateFinancialImpact(rebaCategory, eceriCategory);
+            }
+            
+            function getRiskCategory(score) {
+                score = Math.round(score);
+                if (score === 1) return "Negligible";
+                if (score >= 2 && score <= 3) return "Low";
+                if (score >= 4 && score <= 7) return "Medium";
+                if (score >= 8 && score <= 10) return "High";
+                return "Very High";
+            }
+            
+            function getActionRecommendation(category) {
+                switch(category) {
+                    case "Negligible": return "No action necessary";
+                    case "Low": return "Change may be needed";
+                    case "Medium": return "Further investigate. Change soon";
+                    case "High": return "Investigate and implement change";
+                    case "Very High": return "Implement change Now";
+                    default: return "";
+                }
+            }
+            
+            function setRiskCategoryColor(elementId, category) {
+                const element = document.getElementById(elementId);
+                element.className = ''; // Clear existing classes
+                
+                switch (category) {
+                    case 'Negligible':
+                        element.classList.add('risk-negligible', 'rounded', 'py-1');
+                        break;
+                    case 'Low':
+                        element.classList.add('risk-low', 'rounded', 'py-1');
+                        break;
+                    case 'Medium':
+                        element.classList.add('risk-medium', 'rounded', 'py-1');
+                        break;
+                    case 'High':
+                        element.classList.add('risk-high', 'rounded', 'py-1');
+                        break;
+                    case 'Very High':
+                        element.classList.add('risk-very-high', 'rounded', 'py-1');
+                        break;
+                }
+            }
+            
+            function getNextCategory(category) {
+                switch(category) {
+                    case "Negligible": return "Low";
+                    case "Low": return "Medium";
+                    case "Medium": return "High";
+                    case "High": return "Very High";
+                    default: return null;
+                }
+            }
+            
+            function updateThresholdIndicator(type, score) {
+                const roundedScore = Math.round(score);
+                let nextThreshold, currentThreshold, category;
+                
+                if (roundedScore === 1) {
+                    category = "Negligible";
+                    currentThreshold = 1;
+                    nextThreshold = 2; // Next is Low
+                } else if (roundedScore >= 2 && roundedScore <= 3) {
+                    category = "Low";
+                    currentThreshold = 2;
+                    nextThreshold = 4; // Next is Medium
+                } else if (roundedScore >= 4 && roundedScore <= 7) {
+                    category = "Medium";
+                    currentThreshold = 4;
+                    nextThreshold = 8; // Next is High
+                } else if (roundedScore >= 8 && roundedScore <= 10) {
+                    category = "High";
+                    currentThreshold = 8;
+                    nextThreshold = 11; // Next is Very High
+                } else {
+                    category = "Very High";
+                    currentThreshold = 11;
+                    nextThreshold = 16; // Max score + 1
+                }
+                
+                // Calculate how close we are to the next threshold as a percentage
+                const range = nextThreshold - currentThreshold;
+                const position = score - currentThreshold;
+                const percentage = Math.min(100, Math.max(0, (position / range) * 100));
+                
+                const nextCategory = category === "Very High" ? null : getNextCategory(category);
+                const remaining = (nextThreshold - score).toFixed(1);
+                
+                // Update threshold indicator
+                document.getElementById(`${type}NextCategory`).textContent = nextCategory ? nextCategory : 'Max';
+                document.getElementById(`${type}ThresholdFill`).style.width = `${percentage}%`;
+                
+                let thresholdInfo;
+                if (category === "Very High") {
+                    thresholdInfo = "Maximum risk category reached";
+                } else {
+                    thresholdInfo = `${remaining} points away from ${nextCategory} category`;
+                }
+                document.getElementById(`${type}ThresholdInfo`).textContent = thresholdInfo;
+            }
+            
+            function updateSafetyRecommendations(type, category, factors) {
+                const recommendations = getSpecificRecommendations(category, factors);
+                const recommendationsList = document.getElementById(`${type}Recommendations`);
+                
+                // Clear current recommendations
+                recommendationsList.innerHTML = '';
+                
+                // Add new recommendations
+                recommendations.forEach(rec => {
+                    const li = document.createElement('li');
+                    li.textContent = rec;
+                    recommendationsList.appendChild(li);
+                });
+            }
+            
+            function getSpecificRecommendations(category, factors) {
+                let recommendations = [];
+                
+                // Base recommendations by risk category
+                if (category === "Negligible") {
+                    recommendations.push("Maintain current protocols");
+                    recommendations.push("Conduct routine monitoring");
+                } else if (category === "Low") {
+                    recommendations.push("Review ergonomic positioning");
+                    recommendations.push("Check equipment condition");
+                } else if (category === "Medium") {
+                    recommendations.push("Implement ergonomic improvements");
+                    recommendations.push("Schedule regular breaks");
+                    recommendations.push("Enhance worker training");
+                } else if (category === "High") {
+                    recommendations.push("Redesign task workflow");
+                    recommendations.push("Evaluate for mechanical assistance");
+                    recommendations.push("Increase supervision");
+                } else if (category === "Very High") {
+                    recommendations.push("Stop task immediately");
+                    recommendations.push("Complete hazard reassessment");
+                    recommendations.push("Implement engineering controls");
+                }
+                
+                // Add factor-specific recommendations
+                if (factors.hf > 0.5) { // High height factor
+                    recommendations.push("Verify fall protection systems");
+                    recommendations.push("Check anchor point integrity");
+                }
+                
+                if (factors.sf > 0.5) { // Poor surface condition
+                    recommendations.push("Improve surface stability");
+                    recommendations.push("Install anti-slip measures");
+                }
+                
+                if (factors.slf > 0.5) { // Steep slope
+                    recommendations.push("Use slope-specific restraints");
+                    recommendations.push("Install temporary platforms");
+                }
+                
+                if (factors.epf > 0.5) { // Close to edge
+                    recommendations.push("Install guardrail system");
+                    recommendations.push("Increase edge demarcation");
+                }
+                
+                // Return top 3 most relevant recommendations
+                return recommendations.slice(0, 3);
+            }
+            
+            function updateFinancialImpact(rebaCategory, eceriCategory) {
+                // Get input values
+                const workerCount = parseInt(document.getElementById('workersInput').value) || 5;
+                const projectDuration = parseInt(document.getElementById('durationInput').value) || 6;
+                
+                // Constants for financial calculations
+                const AVG_INJURY_COST = 39000; // Average direct cost per recordable injury
+                const INDIRECT_COST_MULTIPLIER = 3; // Multiplier for indirect costs (industry average 2-4x)
+                const TOTAL_COST_PER_INJURY = AVG_INJURY_COST * INDIRECT_COST_MULTIPLIER;
+                const INTERVENTION_COST_PER_WORKER = 2000; // Estimated cost of implementing safety measures per worker
+                
+                // Risk category to incident rate mapping (incidents per 200,000 work hours)
+                // These are illustrative rates based on construction industry averages modified by risk level
+                const incidentRates = {
+                    "Negligible": 0.5,
+                    "Low": 1.5,
+                    "Medium": 3.0,
+                    "High": 5.0,
+                    "Very High": 8.0
+                };
+                
+                // Risk reduction factors when implementing appropriate controls
+                // Represents how much incident rate decreases when proper measures are implemented
+                const riskReductionFactors = {
+                    "Negligible": 0.05,
+                    "Low": 0.20,
+                    "Medium": 0.40,
+                    "High": 0.55,
+                    "Very High": 0.65
+                };
+                
+                // Calculate work hours for the project duration
+                const workHours = workerCount * projectDuration * 160; // 160 hours per month average
+                
+                // Calculate incident rates for REBA and ECERI
+                const rebaRate = incidentRates[rebaCategory];
+                const eceriRate = incidentRates[eceriCategory] * (1 - riskReductionFactors[eceriCategory]);
+                
+                // Calculate expected number of incidents
+                const rebaIncidents = (rebaRate * workHours) / 200000;
+                const eceriIncidents = (eceriRate * workHours) / 200000;
+                
+                // Calculate potential costs
+                const rebaCost = rebaIncidents * TOTAL_COST_PER_INJURY;
+                const eceriCost = eceriIncidents * TOTAL_COST_PER_INJURY;
+                const costSavings = rebaCost - eceriCost;
+                
+                // Calculate cost of safety interventions
+                const interventionCost = workerCount * INTERVENTION_COST_PER_WORKER;
+                
+                // Calculate ROI
+                const roi = (costSavings - interventionCost) / interventionCost * 100;
+                
+                // Update the UI
+                document.getElementById('rebaRiskCategory').textContent = rebaCategory;
+                document.getElementById('eceriRiskCategory').textContent = eceriCategory;
+                document.getElementById('rebaIncidentRate').textContent = rebaRate.toFixed(1);
+                document.getElementById('eceriIncidentRate').textContent = eceriRate.toFixed(1);
+                
+                document.getElementById('costWithoutEceri').textContent = '$' + formatNumber(Math.round(rebaCost));
+                document.getElementById('costWithEceri').textContent = '$' + formatNumber(Math.round(eceriCost));
+                document.getElementById('costSavings').textContent = '$' + formatNumber(Math.round(costSavings));
+                
+                const roiFormatted = roi > 0 ? '+' + roi.toFixed(0) + '%' : roi.toFixed(0) + '%';
+                document.getElementById('roiValue').textContent = roiFormatted;
+                document.getElementById('roiGauge').style.width = Math.min(Math.max(roi, 0), 1000) / 10 + '%';
+            }
+            
+            // Utility function to format numbers with commas
+            function formatNumber(num) {
+                return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+            }
+            
+            // Add event listeners for the financial inputs
+            document.getElementById('workersInput').addEventListener('input', function() {
+                calculateECERI();
+            });
+            
+            document.getElementById('durationInput').addEventListener('input', function() {
+                calculateECERI();
+            });
+        });
+    </script>
+</body>
+</html>
